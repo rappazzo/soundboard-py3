@@ -15,3 +15,7 @@ class Library(metaclass=ABCMeta):
     def get_file(self, file_name):
         pass
 
+    @abstractmethod
+    def list(self):
+        pass
+
