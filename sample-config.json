@@ -1,0 +1,57 @@
+{
+  "libraries": [
+    {
+      "source": "/Users/mike/Library/Audio/Sounds/soundboard",
+      "name": "play",
+      "is_default": true
+    },
+    {
+      "source": "/Users/mike/Library/Audio/Sounds/soundboard/kurt"
+    },
+    {
+      "source": "/Users/mike/Library/Audio/Sounds/soundboard/lunch"
+    },
+    {
+      "source": "/Users/mike/Library/Audio/Sounds/soundboard/sneeze"
+    },
+    {
+      "source": "/Users/mike/Library/Audio/Sounds/soundboard/thanks"
+    },
+    {
+      "source": "/Users/mike/Library/Audio/Sounds/soundboard/zoo"
+    }
+  ],
+  "commands": [
+    {
+      "name": "play",
+      "type": "play",
+      "args": {
+        "lib_name": "play"
+      }
+    },
+    {
+      "name": "say",
+      "type": "say"
+    },
+    {
+      "name": "kurt",
+      "type": "play",
+      "args": {
+        "lib_name": "kurt"
+      }
+    },
+    {
+      "name": "stop",
+      "type": "stop"
+    },
+    {
+      "name": "list",
+      "type": "list"
+    }
+  ],
+  "listen": [
+    {
+      "name": "slack"
+    }
+  ]
+}
