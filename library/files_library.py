@@ -21,7 +21,7 @@ class FilesLibrary(Library):
                 self.files[f_name.lower()] = file
                 self.names.append(f_name)
             elif isdir(file):
-                # opportunity to recurse -- probably better to ecplicitly configure
+                # opportunity to recurse -- probably better to explicitly configure
                 pass
 
     def get_name(self):

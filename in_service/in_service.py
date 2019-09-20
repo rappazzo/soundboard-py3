@@ -8,7 +8,7 @@ class InService(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def start(self, executor):
+    def run_service(self):
         pass
 
 

@@ -14,5 +14,5 @@ class List(Command):
         else:
             lib = Libraries.instance.get_default_lib()
         if lib is not None:
-            return lib.list()
+            return sorted(lib.list())
         return []

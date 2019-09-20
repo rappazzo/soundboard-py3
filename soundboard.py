@@ -2,10 +2,9 @@ import json
 import sys
 import time
 
-import in_service
-from in_service.in_services import InServices
 import command
-from command.commands import Commands
+from command.command import register_command
+from in_service.slack_in_service import SlackConnection
 from library.libraries import Libraries
 from library.files_library import FilesLibrary
 from concurrent.futures import ThreadPoolExecutor
@@ -37,23 +36,26 @@ class Soundboard:
             command_name = command_config["name"]
             command_args = command_config.get("args", {})
             this_command = command.create(command_type, command_args)
-            Commands().instance.add(command_name, this_command)
+            register_command(command_name, this_command)
 
         # register input service(s)
-        for input_config in input_configs:
-            in_service_name = input_config["name"]
-            in_service_config = input_config.get("config", {})
-            service = in_service.create(in_service_name, in_service_config)
-            InServices().instance.add(in_service_name, service)
-            service.start(self.executor)
+        if input_configs.get("slack") is not None:
+            slack_connection = SlackConnection(input_configs.get("slack"))
+            slack_connection.run_service()
+        # for input_config in input_configs:
+        #     in_service_name = input_config["name"]
+        #     in_service_config = input_config.get("config", {})
+        #     service = in_service.create(in_service_name, in_service_config)
+        #     InServices().instance.add(in_service_name, service)
+        #     self.executor.submit(service.run_service)
 
 
 if __name__ == "__main__":
-    config_file = "sample-config.json"
+    config = "sample-config.json"
     if len(sys.argv) > 1:
-        config_file = sys.argv[1]
+        config = sys.argv[1]
 
-    soundboard = Soundboard(config_file)
+    soundboard = Soundboard(config)
     soundboard.configure()
 
     # wait forever

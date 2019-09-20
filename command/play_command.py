@@ -51,13 +51,14 @@ def wait_for_play_to_complete():
 
 class Play(Command):
 
-    def __init__(self, config={}):
+    def __init__(self, config=None):
+        config = config or {}
         lib_name = config.get("lib_name", None)
         if lib_name is None:
-           self.library = Libraries().instance.get_default_lib()
-           lib_name = "Default Library"
+            self.library = Libraries().instance.get_default_lib()
+            lib_name = "Default Library"
         else:
-           self.library = Libraries().instance.get_lib(lib_name)
+            self.library = Libraries().instance.get_lib(lib_name)
         if self.library is None:
             raise NameError(f"{lib_name} not found")
 

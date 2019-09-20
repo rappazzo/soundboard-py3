@@ -49,9 +49,9 @@
       "type": "list"
     }
   ],
-  "listen": [
-    {
-      "name": "slack"
+  "listen": {
+    "slack": {
+      "name": "slacks"
     }
-  ]
+  }
 }

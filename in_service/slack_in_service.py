@@ -1,11 +1,9 @@
 import os
-import time
 import re
-import sys
-from slack import WebClient
+import slack
 
 import command
-from command.commands import Commands
+from command.command import get_command
 from in_service import InService
 
 # constants
@@ -13,53 +11,23 @@ RTM_READ_DELAY = 1  # 1 second delay between reading from RTM
 MENTION_REGEX = "<@(|[WU].+?)> `?(.*?)`?"
 
 
-class Slack(InService):
+class SlackConnection(InService):
 
-    def __init__(self, config={}):
-        self.slack_token = config.get("token", os.environ["SOUNDBOARD_SLACK_TOKEN"])
-        self.slack_client = WebClient(token=self.slack_token)
-        self.soundboard_bot_id = None
+    def __init__(self, config=None):
+        self.config = config or {}
+        self.slack_token = self.config.get("token", os.environ.get("SOUNDBOARD_SLACK_TOKEN"))
+        if self.slack_token is None:
+            print('Missing SLACK TOKEN -- disabling slack input service')
+            return
+        self.rtm = slack.RTMClient(token=self.slack_token)
+        self.client = slack.WebClient(token=self.slack_token)
+        self.my_bot_id = None
 
     def get_name(self):
         return "slack"
 
-    def parse_bot_commands(self, slack_events):
-        """
-            Parses a list of events coming from the Slack RTM API to find bot commands.
-            If a bot command is found, this function returns a tuple of command and channel.
-            If its not found, then this function returns None, None.
-
-            If the channel stars with:
-             - C, it's a public channel
-             - D, it's a DM with the user
-             - G, it's either a private channel or multi-person DM
-        """
-        for event in slack_events:
-            if event["type"] == "message" and "subtype" not in event and not event["user"] == self.soundboard_bot_id:
-                # print (event)
-                if event["channel"][0] == 'D':
-                    # direct message
-                    # print ("   Direct Message")
-                    return event["text"], event["channel"], event["user"]
-
-                else:
-                    user_id, message = Slack.parse_direct_mention(event["text"])
-                    if user_id == self.soundboard_bot_id:
-                        return message, event["channel"], event["user"]
-        return None, None, None
-
     @staticmethod
-    def parse_direct_mention(message_text):
-        """
-            Finds a direct mention in message text and returns the user ID which
-            was mentioned. If there is no direct mention, returns None
-        """
-        matches = re.search(MENTION_REGEX, message_text)
-        # the first group contains the username, the second group contains the remaining message
-        return (matches.group(1), matches.group(2).strip()) if matches else (None, None)
-
-    def format_command_response(self, cmd_response):
-        response = None
+    def format_command_response(cmd_response):
         if isinstance(cmd_response, str):
             response = cmd_response
         else:
@@ -67,7 +35,7 @@ class Slack(InService):
             response = "\n".join(cmd_response)
         return response
 
-    def handle_command(self, message, channel, user):
+    def handle_command(self, message, payload):
         """
             Executes bot command if the command is known
         """
@@ -78,6 +46,9 @@ class Slack(InService):
         # Finds and executes the given command, filling in response
         response = None
 
+        if message == "stop listening":
+            os.exit(0)
+
         command_and_args = message.split(maxsplit=1)
         command_name = command_and_args[0]
         args = None
@@ -85,9 +56,9 @@ class Slack(InService):
             args = command_and_args[1]
 
         try:
-            command = Commands().instance.get(command_name)
-            if command is not None:
-                response = self.format_command_response(command.invoke(args))
+            cmd = get_command(command_name)
+            if cmd is not None:
+                response = self.format_command_response(cmd.invoke(args))
                 if len(response) > 100:
                     response = f"```{response}```"
         except NameError as e:
@@ -95,46 +66,68 @@ class Slack(InService):
 
         # Sends the response back to the channel
         if response is None or len(response) > 400:
-            channel = user
-        self.slack_client.api_call(
-            "chat.postMessage",
+            channel = payload['data']['user']
+        else:
+            channel = payload['data']['channel']
+
+        payload['web_client'].chat_postMessage(
+            # thread_ts=payload['data']['ts'], <-- threaded?
             channel=channel,
             as_user="true",
             text=response or default_response
         )
 
-    def connect(self):
-        if self.slack_client.rtm_connect(with_team_state=False):
+    def handle_message(self, **payload):
+        """
+            Executes bot command if the command is known
+        """
+        data = payload['data']
+        # Ignore messages posted by this bot
+        user = data.get('user')
+        if user == self.my_bot_id:
+            return
+
+        message = data.get("text")
+        if message is None:
+            return
+
+        if data['channel'][0] == 'D':
+            # direct message
+            # print ("   Direct Message")
+            self.handle_command(message, payload)
+        else:
+            user_id, message = parse_direct_mention(message)
+            if user_id == self.my_bot_id:
+                self.handle_command(message, payload)
+
+    def run_service(self):
+        slack.RTMClient.run_on(event='message')(self.handle_message)
+        # Read bot's user ID by calling Web API method `auth.test`
+        self.my_bot_id = self.client.auth_test()["user_id"]
+        if self.my_bot_id is not None:
             print("Soundboard slack bot connected and running!")
-            # Read bot's user ID by calling Web API method `auth.test`
-            self.soundboard_bot_id = self.slack_client.api_call("auth.test")["user_id"]
-            return self.soundboard_bot_id is not None
+            self.rtm.start()
         else:
             print("Slack connection failed!")
-        return False
 
-    def monitor(self):
-        while True:
-            command, channel, user = self.parse_bot_commands(self.slack_client.rtm_read())
-            if command:
-                self.handle_command(command, channel, user)
-            time.sleep(RTM_READ_DELAY)
 
-    def connect_and_monitor(self):
-        if self.connect():
-            self.monitor()
-
-    def start(self, executor):
-        executor.submit(self.connect_and_monitor)
+def parse_direct_mention(message_text):
+    """
+        Finds a direct mention in message text and returns the user ID which
+        was mentioned. If there is no direct mention, returns None
+    """
+    matches = re.search(MENTION_REGEX, message_text)
+    # the first group contains the username, the second group contains the remaining message
+    return (matches.group(1), matches.group(2).strip()) if matches else (None, None)
 
 
 # Main
 if __name__ == "__main__":
-    from command.commands import Commands
+    from command.command import register_command
     from library.libraries import Libraries
     from library.files_library import FilesLibrary
     Libraries().instance.add(FilesLibrary('/Users/mike/Library/Audio/Sounds/soundboard'), is_default=True)
-    Commands().instance.add(command.create("play", {}))
-    Commands().instance.add(command.create("list", {}))
-    slack = Slack()
-    slack.connect_and_monitor()
+    register_command("play", command.create("play", {}))
+    register_command("list", command.create("list", {}))
+    slack_connection = SlackConnection()
+    slack_connection.run_service()
