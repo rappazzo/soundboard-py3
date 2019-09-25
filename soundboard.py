@@ -8,6 +8,8 @@ from library.libraries import Libraries
 from library.files_library import FilesLibrary
 from concurrent.futures import ThreadPoolExecutor
 
+from rest_service.rest_api import RestService
+
 
 class Soundboard:
 
@@ -46,6 +48,11 @@ class Soundboard:
         if input_configs.get("slack") is not None and input_configs["slack"].get("enabled", True):
             slack_connection = SlackConnection(input_configs.get("slack"))
             slack_connection.run_service()
+
+        if input_configs.get("rest") is not None and input_configs["rest"].get("enabled", True):
+            rest = RestService(input_configs.get("rest"))
+            rest.run_service()
+
 
 if __name__ == "__main__":
     config = "sample-config.json"

@@ -1,0 +1,165 @@
+openapi: 3.0.0
+servers:
+  - description: Soundboard server
+    url: /api/1.0
+info:
+  description: Simple soundboard api
+  version: "1.0.0"
+  title: Simple Soundboard API
+  contact:
+    email: rappazzo@gmail.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: users
+    description: Operations available to regular users
+paths:
+  /list:
+    get:
+      tags:
+        - users
+      summary: list the sounds available in the soundboard
+      operationId: list_sounds
+      description:
+        List the sounds with the specified tag.  If no tag
+        is specified, then the files listed will be from
+        the untagged list (default)
+      parameters:
+        - in: query
+          name: tag
+          description: the tag for sounds to list
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: offset
+          description: number of records to skip for pagination
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+        - in: query
+          name: limit
+          description: maximum number of records to return
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+      responses:
+        '200':
+          description: list of avalable sounds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example: rimshot
+        '400':
+          description: bad input parameter
+      x-openapi-router-controller: rest_service.controllers.controller
+
+  /tags:
+    get:
+      tags:
+        - users
+      summary: list the tags which sounds are filed under
+      operationId: list_tags
+      description:
+        List the tags which sounds are filed under
+      responses:
+        '200':
+          description: search results matching criteria
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example: zoo
+      x-openapi-router-controller: rest_service.controllers.controller
+  /say:
+    post:
+      tags:
+        - users
+      summary: make the soundboard say a phrase
+      operationId: say_something
+      description: says the specified word or phrase
+      responses:
+        '200':
+          description: The phrase was spoken
+        '400':
+          description: invalid input, object invalid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Phrase'
+      x-openapi-router-controller: rest_service.controllers.controller
+  /play:
+    post:
+      tags:
+        - users
+      summary: make the soundboard play a sound
+      operationId: play_something
+      description:
+        plays the specified sound OR a sound at random if only
+        the tag is specified
+      responses:
+        '200':
+          description: The sound was played
+        '400':
+          description:
+            Invalid input
+        '404':
+          description:
+            Not found.  If the specified tag is not found OR
+            the specified name is not found with the given tag
+            (or the default tag)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sound'
+      x-openapi-router-controller: rest_service.controllers.controller
+  /stop:
+    post:
+      tags:
+      - users
+      summary: make the soundboard stop the current audio output
+      description: stop audio output
+      operationId: stop_audio
+      responses:
+        200:
+          description: The audio was stopped
+      x-openapi-router-controller: rest_service.controllers.controller
+components:
+  schemas:
+    Phrase:
+      required:
+        - phrase
+      type: object
+      properties:
+        phrase:
+          type: string
+          example: This is the soundboard
+    Sound:
+      type: object
+      properties:
+        name:
+          type: string
+          example: rimshot
+        names:
+          type: array
+          example:
+          - rimshot
+          - crickets
+          items:
+            type: string
+        tag:
+          type: string
+          example: zoo
+
