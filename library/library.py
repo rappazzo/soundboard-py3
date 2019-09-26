@@ -19,3 +19,7 @@ class Library(metaclass=ABCMeta):
     def list(self):
         pass
 
+    @abstractmethod
+    def is_default(self):
+        pass
+

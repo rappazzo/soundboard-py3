@@ -21,35 +21,7 @@
       "source": "/Users/mike/Library/Audio/Sounds/soundboard/zoo"
     }
   ],
-  "commands": [
-    {
-      "name": "play",
-      "type": "play",
-      "args": {
-        "lib_name": "play"
-      }
-    },
-    {
-      "name": "say",
-      "type": "say"
-    },
-    {
-      "name": "kurt",
-      "type": "play",
-      "args": {
-        "lib_name": "kurt"
-      }
-    },
-    {
-      "name": "stop",
-      "type": "stop"
-    },
-    {
-      "name": "list",
-      "type": "list"
-    }
-  ],
-  "listen": {
+  "input": {
     "slack": {
       "name": "slacks"
     }

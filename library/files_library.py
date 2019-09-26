@@ -1,7 +1,6 @@
 import os
 from os import listdir
-from os.path import isfile, join, splitext, isdir, split
-from library.libraries import Libraries
+from os.path import isfile, join, isdir
 from library.library import Library
 
 
@@ -9,11 +8,12 @@ class FilesLibrary(Library):
 
     location: str
 
-    def __init__(self, location, name=None):
+    def __init__(self, location, name=None, is_default=False):
         self.location = location
         self.name = name or os.path.split(location)[1]
         self.files = {}
         self.names = []
+        self.default = is_default
         for f in listdir(self.location):
             file = join(self.location, f)
             if isfile(file):
@@ -35,3 +35,6 @@ class FilesLibrary(Library):
 
     def list(self):
         return self.names
+
+    def is_default(self):
+        return self.default

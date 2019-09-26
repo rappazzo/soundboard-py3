@@ -2,8 +2,7 @@ import json
 import sys
 import time
 
-import command
-from command.command import register_command
+from command import commands
 from in_service.slack_in_service import SlackConnection
 from library.libraries import Libraries
 from library.files_library import FilesLibrary
@@ -20,35 +19,33 @@ class Soundboard:
     def configure(self):
         # config predconditions
         lib_configs = self.config["libraries"]
-        command_configs = self.config["commands"]
-        input_configs = self.config["listen"]
+        command_configs = self.config.get("commands", {})
+        input_configs = self.config["input"]
 
         # load libraries
         for lib_config in lib_configs:
-            lib = FilesLibrary(lib_config["source"], lib_config.get("name", None))
             is_default = lib_config.get("is_default", False)
-            Libraries().instance.add(lib, is_default)
+            lib = FilesLibrary(lib_config["source"], lib_config.get("name", None), is_default)
+            Libraries().instance.add(lib)
         Libraries().instance.ensure_default()
 
         # register commands
-        for command_config in command_configs:
-            command_type = command_config["type"]
-            command_name = command_config["name"]
-            command_args = command_config.get("args", {})
-            this_command = command.create(command_type, command_args)
-            register_command(command_name, this_command)
+
+        commands.register_command("play", commands.play_sound)
+        for lib in Libraries().instance.get_libs():
+            if not lib.is_default():
+                play_lib_cmd = lambda *sounds: commands.play_sound(lib_name=lib.get_name(), *sounds)
+                commands.register_command(lib.get_name(), play_lib_cmd)
+
+        commands.configure_commands(command_configs)
+        commands.register_command("say", commands.say_phrase)
+        commands.register_command("list", commands.list_sounds)
+        commands.register_command("stop", commands.stop_audio)
 
         # register input service(s)
-        if input_configs.get("slack") is not None:
+        if input_configs.get("slack") is not None and input_configs["slack"].get("enabled", True):
             slack_connection = SlackConnection(input_configs.get("slack"))
             slack_connection.run_service()
-        # for input_config in input_configs:
-        #     in_service_name = input_config["name"]
-        #     in_service_config = input_config.get("config", {})
-        #     service = in_service.create(in_service_name, in_service_config)
-        #     InServices().instance.add(in_service_name, service)
-        #     self.executor.submit(service.run_service)
-
 
 if __name__ == "__main__":
     config = "sample-config.json"

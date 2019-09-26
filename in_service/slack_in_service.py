@@ -1,9 +1,11 @@
 import os
 import re
+import sys
+
 import slack
 
 import command
-from command.command import get_command
+from command import commands
 from in_service import InService
 
 # constants
@@ -47,7 +49,8 @@ class SlackConnection(InService):
         response = None
 
         if message == "stop listening":
-            os.exit(0)
+            self.rtm.stop()
+            sys.exit(0)
 
         command_and_args = message.split(maxsplit=1)
         command_name = command_and_args[0]
@@ -56,9 +59,9 @@ class SlackConnection(InService):
             args = command_and_args[1]
 
         try:
-            cmd = get_command(command_name)
+            cmd = commands.get_command(command_name)
             if cmd is not None:
-                response = self.format_command_response(cmd.invoke(args))
+                response = self.format_command_response(cmd(args))
                 if len(response) > 100:
                     response = f"```{response}```"
         except NameError as e:
@@ -123,11 +126,10 @@ def parse_direct_mention(message_text):
 
 # Main
 if __name__ == "__main__":
-    from command.command import register_command
     from library.libraries import Libraries
     from library.files_library import FilesLibrary
     Libraries().instance.add(FilesLibrary('/Users/mike/Library/Audio/Sounds/soundboard'), is_default=True)
-    register_command("play", command.create("play", {}))
-    register_command("list", command.create("list", {}))
+    commands.register_command("play", commands.play_sound)
+    commands.register_command("list", commands.list_sounds)
     slack_connection = SlackConnection()
     slack_connection.run_service()

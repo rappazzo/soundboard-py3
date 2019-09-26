@@ -10,9 +10,9 @@ class Libraries:
         def __str__(self):
             return repr(self)
 
-        def add(self, lib:Library, is_default=False):
+        def add(self, lib:Library):
             self.libs[lib.get_name()] = lib
-            if is_default:
+            if lib.is_default():
                 self.default_lib = lib
 
         def get_lib(self, lib_name):
@@ -30,6 +30,9 @@ class Libraries:
             if lib is not None:
                 return lib.get_file(file_name)
             return None
+
+        def get_libs(self):
+            return self.libs.values()
 
     instance = None
 
