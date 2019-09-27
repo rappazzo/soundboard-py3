@@ -21,7 +21,7 @@ class SlackConnection(InService):
         if self.slack_token is None:
             print('Missing SLACK TOKEN -- disabling slack input service')
             return
-        self.rtm = slack.RTMClient(token=self.slack_token)
+        self.rtm = slack.RTMClient(token=self.slack_token, run_async=True)
         self.client = slack.WebClient(token=self.slack_token)
         self.my_bot_id = None
 
@@ -112,6 +112,10 @@ class SlackConnection(InService):
             self.rtm.start()
         else:
             print("Slack connection failed!")
+
+
+    def stop_service(self):
+        self.rtm.stop()
 
 
 def parse_direct_mention(message_text):

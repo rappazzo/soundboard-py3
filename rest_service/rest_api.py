@@ -21,6 +21,9 @@ class RestService(InService):
         print(f"Soundboard rest service is listening (port: {self.config.get('port', 8080)})")
         app.run(self.config.get('port', 8080))
 
+    def stop_service(self):
+        pass
+
 
 if __name__ == '__main__':
     service = RestService()
