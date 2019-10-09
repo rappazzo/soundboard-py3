@@ -94,6 +94,8 @@ def say_phrase(*words):
     }
     r = requests.get("http://api.voicerss.org/", params=params)
     clip = AudioSegment.from_file(io.BytesIO(r.content), format='wav')
+    # increase the volume
+    clip = clip + 5
     play(clip)
 
     return f"I said '{sentence}'"
