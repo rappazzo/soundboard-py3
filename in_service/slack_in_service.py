@@ -4,13 +4,13 @@ import sys
 
 import slack
 
-import command
 from command import commands
 from in_service import InService
 
 # constants
 RTM_READ_DELAY = 1  # 1 second delay between reading from RTM
 MENTION_REGEX = "<@(|[WU].+?)> `?(.*?)`?"
+who_cache = {}
 
 
 class SlackConnection(InService):
@@ -19,22 +19,28 @@ class SlackConnection(InService):
         self.config = config or {}
         self.slack_token = self.config.get("token", os.environ.get("SOUNDBOARD_SLACK_TOKEN"))
         if self.slack_token is None:
-            print('Missing SLACK TOKEN -- disabling slack input service')
+            print('Missing SLACK TOKEN -- disabling slack listener service')
             return
         self.rtm = slack.RTMClient(token=self.slack_token, run_async=True)
         self.client = slack.WebClient(token=self.slack_token)
-        self.my_bot_id = None
+        # Read bot's user ID by calling Web API method `auth.test`
+        self.my_bot_id = self.client.auth_test()["user_id"]
 
     def get_name(self):
         return "slack"
+
+    def relay(self):
+        pass
 
     @staticmethod
     def format_command_response(cmd_response):
         if isinstance(cmd_response, str):
             response = cmd_response
         else:
-            # treat as a list -- join list items with \n
-            response = "\n".join(cmd_response)
+            try:
+                response = "\n".join(cmd_response)
+            except TypeError:
+                response = cmd_response
         return response
 
     def handle_command(self, message, payload):
@@ -61,7 +67,8 @@ class SlackConnection(InService):
         try:
             cmd = commands.get_command(command_name)
             if cmd is not None:
-                response = self.format_command_response(cmd(args))
+                who = self.get_who(payload)
+                response = self.format_command_response(cmd(args, who=who))
                 if len(response) > 100:
                     response = f"```{response}```"
         except NameError as e:
@@ -79,6 +86,18 @@ class SlackConnection(InService):
             as_user="true",
             text=response or default_response
         )
+
+    def get_who(self, payload):
+        who = payload['data']['user']
+        who_data = who_cache.get(who)
+        if who_data is None:
+            who_data = self.client.users_info(user=who)
+            if who_data is not None and who_data["ok"]:
+                who_cache[who] = who_data["user"]
+                who = who_cache[who]["real_name"]
+        else:
+            who = who_data["real_name"]
+        return who
 
     def handle_message(self, **payload):
         """
@@ -105,14 +124,11 @@ class SlackConnection(InService):
 
     def run_service(self):
         slack.RTMClient.run_on(event='message')(self.handle_message)
-        # Read bot's user ID by calling Web API method `auth.test`
-        self.my_bot_id = self.client.auth_test()["user_id"]
         if self.my_bot_id is not None:
             print("Soundboard slack bot connected and running!")
             self.rtm.start()
         else:
             print("Slack connection failed!")
-
 
     def stop_service(self):
         self.rtm.stop()

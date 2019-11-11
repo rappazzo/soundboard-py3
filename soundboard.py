@@ -2,19 +2,21 @@ import json
 import sys
 import time
 
-from command import commands
+from command import commands, relay
+from command.relay import SlackRelay
 from in_service.slack_in_service import SlackConnection
 from library.libraries import Libraries
 from library.files_library import FilesLibrary
-from concurrent.futures import ThreadPoolExecutor
 
 from rest_service.rest_api import RestService
+import nest_asyncio
+
+nest_asyncio.apply()
 
 
 class Soundboard:
 
     def __init__(self, config_file):
-        self.executor = ThreadPoolExecutor()
         with open(config_file) as f:
             self.config = json.load(f)
 
@@ -36,13 +38,20 @@ class Soundboard:
         commands.register_command("play", commands.play_sound)
         for lib in Libraries().instance.get_libs():
             if not lib.is_default():
-                play_lib_cmd = lambda *sounds: commands.play_sound(lib_name=lib.get_name(), *sounds)
+                def play_lib_cmd(sounds):
+                    commands.play_sound(lib_name=lib.get_name(), *sounds)
                 commands.register_command(lib.get_name(), play_lib_cmd)
 
         commands.configure_commands(command_configs)
         commands.register_command("say", commands.say_phrase)
         commands.register_command("list", commands.list_sounds)
         commands.register_command("stop", commands.stop_audio)
+
+        relay_configs = self.config["relay"]
+        if relay_configs is not None:
+            if relay_configs.get("slack") is not None:
+                slack_relay = SlackRelay(relay_configs.get("slack"))
+                relay.add_relay(slack_relay)
 
         # register input service(s)
         if input_configs.get("slack") is not None and input_configs["slack"].get("enabled", True):

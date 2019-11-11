@@ -3,6 +3,7 @@
 Slack:
 
     pip3 install slackclient
+    pip3 install nest_asyncio
 
 Audio:
 

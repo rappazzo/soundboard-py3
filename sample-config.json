@@ -23,10 +23,16 @@
   ],
   "input": {
     "slack": {
-      "name": "slacks"
+      "enabled": true,
     },
     "rest": {
+      "enabled": false,
       "port": 8686
+    }
+  },
+  "relay": {
+    "slack": {
+      "channel": "CHF7RH464",
     }
   }
 }

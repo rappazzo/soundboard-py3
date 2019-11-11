@@ -1,3 +1,5 @@
+import socket
+
 import connexion
 
 from command import commands
@@ -57,8 +59,8 @@ def play_something(sound=None):
         sounds.append(sound.name)
     if sound.names is not None:
         sounds.extend(sound.names)
-
-    result = commands.play_sound(*sounds, lib_name=sound.tag)
+    who = socket.gethostbyaddr(connexion.request.remote_addr)[0]
+    result = commands.play_sound(*sounds, lib_name=sound.tag, who=who)
 
     return result
 
@@ -74,8 +76,9 @@ def say_something(data=None):  # noqa: E501
     :rtype: None
     """
     if connexion.request.is_json:
-        data = Phrase.from_dict(connexion.request.get_json())  # noqa: E501
-    return commands.say_phrase(data.phrase)
+        data = Phrase.from_dict(connexion.request.get_json())
+    who = socket.gethostbyaddr(connexion.request.remote_addr)[0]
+    return commands.say_phrase(data.phrase, who=who)
 
 
 def stop_audio():
@@ -86,4 +89,5 @@ def stop_audio():
 
     :rtype: None
     """
-    return commands.stop_audio()
+    who = socket.gethostbyaddr(connexion.request.remote_addr)[0]
+    return commands.stop_audio(who=who)

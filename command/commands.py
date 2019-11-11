@@ -1,13 +1,14 @@
-import random
 import io
 import os
-import requests
+import random
 
-from command.audio import async_play, stop
-from library.libraries import Libraries
+import requests
 from pydub import AudioSegment
 from pydub.playback import play
 
+from command import relay
+from command.audio import async_play, stop
+from library.libraries import Libraries
 
 voice_rss_api_key = None
 language = 'en-us'
@@ -32,7 +33,7 @@ def has_command(name):
     return registry.get(name) is not None
 
 
-def list_sounds(lib_name=None):
+def list_sounds(lib_name=None, who=None):
     if lib_name is None:
         library = Libraries().instance.get_default_lib()
     else:
@@ -42,7 +43,7 @@ def list_sounds(lib_name=None):
     return []
 
 
-def list_libs():
+def list_libs(who=None):
     lib_names = []
     for lib in Libraries().instance.get_libs():
         if not lib.is_default():
@@ -50,7 +51,7 @@ def list_libs():
     return sorted(lib_names)
 
 
-def play_sound(*sound_names, lib_name=None):
+def play_sound(*sound_names, lib_name=None, who=None):
     if lib_name is None:
         library = Libraries().instance.get_default_lib()
     else:
@@ -76,10 +77,11 @@ def play_sound(*sound_names, lib_name=None):
     if valid:
         async_play(clip)
         base_name = lib_name or "Play"
+        relay.send(f"{who} played {played}")
         return f"{base_name} '{played}'"
 
 
-def say_phrase(*words):
+def say_phrase(*words, who=None):
     if voice_rss_api_key is None:
         print("Missing API key for 'say' command")
         raise ValueError ("Missing API key for 'say' command")
@@ -98,9 +100,11 @@ def say_phrase(*words):
     clip = clip + 5
     play(clip)
 
+    relay.send(f"{who} said '{sentence}'")
     return f"I said '{sentence}'"
 
 
-def stop_audio():
+def stop_audio(who=None):
     stopped = stop()
+    relay.send(f"{who} stopped playback")
     return f"stopped {stopped}"
